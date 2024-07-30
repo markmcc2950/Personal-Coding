@@ -21,9 +21,10 @@ cMain::cMain() : wxFrame(nullptr, wxID_ANY, "Random Episode Generator", wxPoint(
 {
 	// Create our buttons
 	m_btn1 = new wxButton(this, 10001, "Generate Random Episode", wxPoint(10, 10), wxSize(150, 30));
-	m_btn2 = new wxButton(this, 10002, "Play Next Episode", wxPoint(10, 40), wxSize(150, 30));
+	m_btn2 = new wxButton(this, 10002, "Play Continuous Random Episodes", wxPoint(10, 40), wxSize(150, 30));
 	m_btn3 = new wxButton(this, 10003, "Browse", wxPoint(600, 10), wxSize(75, 30));
 	m_btn1->Disable();
+	m_btn2->Disable();
 	
 	// Create our string boxes
 	m_list1 = new wxListBox(this, wxID_ANY, wxPoint(10, 110), wxSize(500, 20));
@@ -106,20 +107,14 @@ void cMain::onBrowseButtonClicked(wxCommandEvent& evt)
 
 void cMain::OnRandomButtonClicked(wxCommandEvent& evt)
 {
+	// Disable button and show we are searching
+	m_btn1->Disable();
+	m_list1->Clear();
+	m_list1->AppendString("SEARCHING...");
+
 	// Get the number of folders within the selected directory
 	std::string selectedDirectory = dh.getDirectory();
 	bool isValidFolder = true;
-
-	if (selectedDirectory == "") {
-		// Display an error, and show this error in the Directory path under the "BROWSE" button
-		std::cerr << "ERROR: No directory selected." << std::endl;
-		std::string errorDisplay = "ERROR! Select a directory and try again";
-
-		m_list3->SetSize(errorDisplay.length() * 5 + 40, 20);
-		m_list3->AppendString(errorDisplay);
-		m_list3->Show();
-		isValidFolder = false;
-	}
 
 	int directoryCount = 0;
 	int fileCount = 0;
@@ -130,9 +125,7 @@ void cMain::OnRandomButtonClicked(wxCommandEvent& evt)
 
 	srand(time(0));
 
-	m_btn1->Disable();
-
-	while (isValidFolder) {		
+	while (isValidFolder) {	
 		directoryCount = dh.getDirectoryFolderCount(selectedDirectory);
 		if (directoryCount > 0) {																	// Append name to directory
 			rand() % 2 ? randomValue = rand() % directoryCount : randomValue = re.getRandomNumber(directoryCount);
@@ -144,7 +137,9 @@ void cMain::OnRandomButtonClicked(wxCommandEvent& evt)
 			fileCount = dh.getNumFilesInFolder(selectedDirectory);
 			if (fileCount > 0) {
 				randomValue = rand() % fileCount;
-				selectedDirectory += "//Episode " + std::to_string(fileCount);
+				vlcPath = selectedDirectory;
+				selectedDirectory += "//Episode " + std::to_string(randomValue);
+				
 
 				// Format our string prior to checking with the written file
 				selectedDirectory = dh.formatFinalDirectory(selectedDirectory, "//", "\\", false);
@@ -155,24 +150,24 @@ void cMain::OnRandomButtonClicked(wxCommandEvent& evt)
 				if (!re.setEpisodeToView(selectedDirectory)) {
 					isValidFolder = false;
 
-					m_list3->Clear();
-					m_list3->SetSize(selectedDirectory.length() * 5 + 40, 20);
-					m_list3->AppendString(selectedDirectory);
-					m_list3->Show();
-
 					m_list1->Clear();
 					m_list1->AppendString(selectedDirectory);
 
 					// Don't show the first episode, but update the list after each episode
 					if (selectedDirectory != "") {
 						m_list2->Clear();
-						for (int i = 9; i > 0; i--) {
-							episodeList[i] = episodeList[i - 1];
-						}
-						episodeList[0] = selectedDirectory;
+
 						for (int i = 0; i < 10; i++) {
 							m_list2->AppendString(episodeList[i]);
 						}
+
+						for (int i = 9; i > 0; i--) {
+							episodeList[i] = episodeList[i - 1];
+						}
+
+						episodeList[0] = selectedDirectory;
+
+						
 					}
 
 					maxLoop = 0;
@@ -217,40 +212,21 @@ void cMain::OnRandomButtonClicked(wxCommandEvent& evt)
 
 	m_btn1->Enable();
 
-	//openFile(seriesTitle, seasonTitle, episodeTitle);
+	std::string episodeName = dh.getFileByIndex(vlcPath, randomValue - 1);
+
+	vlcPath += "\\" + episodeName;
+	vlcPath = dh.formatFinalDirectory(vlcPath, "//", "\\", false);
+	
+	// Views episodes continuously until user closes the application
+	/*if (re.openFile(vlcPath)) {
+		OnRandomButtonClicked(evt);
+	}*/
+
 	evt.Skip();
 }
 
-void cMain::OnNextButtonClicked(wxCommandEvent& evt) {
-	m_list1->Clear();
-	//re.getEpisodes();
-	std::string episodeToView = re.returnEpisode();
-
-	m_list1->AppendString(episodeToView);
-
-	// Don't show the first episode, but update the list after each episode
-	if (recentEpisode != "") {
-		episodePicked = true;
-	}
-	// Grab the list of recent episodes (from most recently watched first)
-	if (episodePicked) {
-		m_list2->Clear();
-		for (int i = 9; i > 0; i--) {
-			episodeList[i] = episodeList[i - 1];
-		}
-		episodeList[0] = recentEpisode;
-		for (int i = 0; i < 10; i++) {
-			m_list2->AppendString(episodeList[i]);
-		}
-	}
-	recentEpisode = re.returnEpisode();
-
-	// Get the strings of information to parse the directory and open the video file
-	std::string seriesTitle = re.returnSeriesName();
-	std::string seasonTitle = re.returnSeasonName();
-	std::string episodeTitle = re.returnEpisodeName();
-
-	re.openFile(seriesTitle, seasonTitle, episodeTitle);
+void cMain::OnContinuousButtonClicked(wxCommandEvent& evt) {
+	//OnRandomButtonClicked(evt);
 	evt.Skip();
 }
 

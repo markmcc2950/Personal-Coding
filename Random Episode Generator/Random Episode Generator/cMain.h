@@ -12,7 +12,7 @@ public:
 public:
 	void OnRandomButtonClicked(wxCommandEvent& evt);
 	void onBrowseButtonClicked(wxCommandEvent& evt);
-	void OnNextButtonClicked(wxCommandEvent& evt);
+	void OnContinuousButtonClicked(wxCommandEvent& evt);
 	void DestroyListBox(wxListBox* listBox);
 	void DestroyButton(wxButton* button);
 	
@@ -29,6 +29,7 @@ private:
 
 	std::string recentEpisode = "";
 	std::string episodeList[10];
+	std::string vlcPath = "";
 	bool episodePicked = false;
 };
 

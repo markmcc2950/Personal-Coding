@@ -87,7 +87,32 @@ std::string DirectoryHandler::getFolderByIndex(const std::string& directoryPath,
 }
 
 std::string DirectoryHandler::getFileByIndex(const std::string& directoryPath, int index) {
-    return "";
+    std::vector<std::string> files;
+
+    try {
+        // Iterate over the directory and collect file names
+        for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
+            if (entry.is_regular_file()) {
+                files.push_back(entry.path().filename().string());
+            }
+        }
+
+        // Check if the index is valid
+        if (index >= files.size()) {
+            throw std::out_of_range("Index is out of range.");
+        }
+
+        // Return the file name at the specified index
+        return files[index];
+    }
+    catch (const std::filesystem::filesystem_error& e) {
+        std::cerr << "Filesystem error: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+
+    return "";                                                                  // Return an empty string if an error occurred
 }
 
 std::string DirectoryHandler::formatFinalDirectory(const std::string& input, const std::string& target, const std::string& replacement, const bool isFinalFormat) {
