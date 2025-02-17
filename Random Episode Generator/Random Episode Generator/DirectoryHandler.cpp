@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <iostream>
 #include <string>
+#include <fstream>
 
 DirectoryHandler dh;
 
@@ -11,8 +12,39 @@ std::string DirectoryHandler::getDirectory() {
 	return folderPath;
 }
 
-void DirectoryHandler::setDirectory(std::string newfolderpath) {
+void DirectoryHandler::setDirectory(const std::string& newfolderpath) {
 	folderPath = newfolderpath;
+    saveBrowsePathToFile(folderPath);
+}
+
+void DirectoryHandler::saveBrowsePathToFile(const std::string& path) {
+    std::ofstream file("config.txt");
+    if (file.is_open()) {
+        file << path;
+        file.close();
+    }
+    else {
+        std::cerr << "Failed to save path." << std::endl;
+    }
+}
+
+bool DirectoryHandler::LoadPathFromFile(std::string& filePath) {
+    std::ifstream file("config.txt");
+    std::string path;
+
+    if (file.is_open()) {
+        std::getline(file, path);  // Read the saved path
+        file.close();
+        filePath = path;
+        folderPath = path;
+        return true;
+    }
+    else {
+        std::cerr << "No saved path found." << std::endl;
+        return false;
+    }
+
+    return false;
 }
 
 int DirectoryHandler::getDirectoryFolderCount(const std::string& directoryPath) {

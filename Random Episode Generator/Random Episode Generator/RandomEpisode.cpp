@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -6,7 +7,9 @@
 #include <fstream>
 #include <iostream>
 
+#define NOMINMAX
 #include <windows.h>
+#include <ShlObj.h>
 #include <tchar.h>
 #include <string>
 
@@ -88,31 +91,44 @@ bool RandomEpisode::openFile(std::string episodePath) {
 	return true;
 }
 
-void RandomEpisode::updateRecentWatched() {
+void RandomEpisode::updateRecentWatched(std::stack<std::string>& episodeStack) {
 	std::ifstream brFile("EpisodesViewed.txt");
-	int episodesViewed = totalEpisodesViewed();
-	if (episodesViewed >= 2) {
-		int totalRecord = 0;
-		int ctr = 0;
-
-		if (brFile.is_open()) {
-			std::string line;
-			while (std::getline(brFile, line) && totalRecord < 10) {
-				if (ctr >= episodesViewed - 10 && episodesViewed >= 12) {
-					recentEpisodesList[totalRecord] = line.c_str();
-					totalRecord++;
-				}
-				
-				
-				ctr++;
-			}
-			brFile.close();
+	if (!brFile) {
+		// File doesn't exist, create it
+		std::ofstream createFile("EpisodesViewed.txt");
+		if (createFile) {
+			std::cout << "Created EpisodesViewed.txt" << std::endl;
+			createFile.close();
 		}
+		else {
+			std::cerr << "Failed to create EpisodesViewed.txt" << std::endl;
+		}
+		// Reopen the file
+		brFile.open("EpisodesViewed.txt");
 	}
-	for (int i = 0; i < 5; i++) {
-		std::string tempString = recentEpisodesList[9 - i];
-		recentEpisodesList[9 - i] = recentEpisodesList[i];
-		recentEpisodesList[i] = tempString;
+	
+
+	int episodesViewed = totalEpisodesViewed();
+	std::string line;
+	std::vector<std::string> episodeVector;
+
+	while (std::getline(brFile, line)) {
+		episodeVector.push_back(line);
+		//episodesViewedHash[line] = true;
+	}
+	brFile.close();
+	
+	int maxEpisodesToStore = std::min(10, (int)episodeVector.size());
+
+	for (int i = episodeVector.size() - maxEpisodesToStore; i < episodeVector.size(); i++) {
+		episodeStack.push(episodeVector[i]);
+	}
+	
+	int listSize = recentEpisodesList.size();
+	if (listSize > 1) {
+		for (int i = 0; i < listSize / 2; i++) {
+			std::swap(recentEpisodesList[i], recentEpisodesList[listSize - 1 - i]);
+		}
 	}
 }
 
@@ -133,11 +149,11 @@ int RandomEpisode::totalEpisodesViewed() {
 	return viewedCounter;
 }
 
-void RandomEpisode::writeToFile(std::string write) {													// Called when needed to write the found episode
+void RandomEpisode::writeToFile(std::string toWrite) {													// Called when needed to write the found episode
 	std::ofstream brFile2;
 	brFile2.open("EpisodesViewed.txt", std::ios_base::app);
 	if (brFile2.is_open()) {
-			brFile2 << write << "\n";
+			brFile2 << toWrite << "\n";
 	}
 	brFile2.close();
 }
@@ -150,6 +166,15 @@ bool RandomEpisode::findViewed(std::string search, int ctr) {
 	if (!episodeFile.is_open()) {
 		std::cerr << "Unable to open EpisodesViewed.txt" << std::endl;
 		return false;
+	}
+
+	// Check if file is empty
+	if (episodeFile.peek() == std::ifstream::traits_type::eof()) {		
+		foundEpisode = search;
+		episodeFile.close();
+		writeToFile(search);
+		searching = false;													// Stop searching
+		return false;														// Stops the loop of searching through files
 	}
 
 	std::string line = "";
@@ -175,7 +200,7 @@ bool RandomEpisode::findViewed(std::string search, int ctr) {
 	return false;
 }
 
-bool RandomEpisode::setEpisodeToView(static std::string& episode) {
+bool RandomEpisode::hasEpisodeBeenViewed(static std::string& episode) {
 	int episodeCounter = totalEpisodesViewed();
 	searching = true;
 	return findViewed(episode, episodeCounter);
